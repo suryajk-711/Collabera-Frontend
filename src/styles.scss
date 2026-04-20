@@ -1,0 +1,53 @@
+/* You can add global styles to this file, and also import other style files */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary:     #080808;
+  --bg-surface:     #0e0e0e;
+  --bg-elevated:    #141414;
+  --bg-input:       #111111;
+
+  --border:         #1c1c1c;
+  --border-focus:   #2e2e2e;
+
+  --text-primary:   #ededed;
+  --text-secondary: #5a5a5a;
+  --text-muted:     #2e2e2e;
+
+  --accent:         #c9a96e;
+  --accent-dim:     rgba(201, 169, 110, 0.1);
+
+  --match:          #4ade80;
+  --match-dim:      rgba(74, 222, 128, 0.06);
+  --mismatch:       #f87171;
+  --mismatch-dim:   rgba(248, 113, 113, 0.06);
+  --missing:        #6b7280;
+  --missing-dim:    rgba(107, 114, 128, 0.05);
+
+  --font-sans: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', 'Courier New', monospace;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

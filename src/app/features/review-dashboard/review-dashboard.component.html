@@ -1,0 +1,230 @@
+<div class="shell">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-left">
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">AI Review</span>
+      <span class="brand-divider">|</span>
+      <span class="brand-sub">Document Intelligence</span>
+    </div>
+    <div class="header-right">
+      <span class="user-chip">officer1</span>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ── Upload Form ── -->
+    @if (state() === 'idle' || state() === 'loading') {
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h1 class="page-title">Pay Stub Review</h1>
+            <p class="page-desc">Upload an applicant pay stub to extract and verify financial data using AI</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label class="field-label" for="app-id">Application ID</label>
+            <input
+              id="app-id"
+              class="text-input"
+              type="text"
+              [(ngModel)]="applicationId"
+              placeholder="APP-1234"
+            />
+          </div>
+
+          <div class="form-field">
+            <label class="field-label">Pay Stub (PDF)</label>
+            <div class="file-row">
+              <label class="file-trigger" for="file-input">Choose File</label>
+              <input
+                id="file-input"
+                type="file"
+                accept=".pdf,application/pdf"
+                (change)="onFileSelected($event)"
+                hidden
+              />
+              <span class="file-label">
+                {{ selectedFile ? selectedFile.name : 'No file selected' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        @if (errorMessage) {
+          <div class="error-strip">{{ errorMessage }}</div>
+        }
+
+        <div class="form-footer">
+          <button
+            class="btn btn-primary"
+            [disabled]="!applicationId.trim() || !selectedFile || state() === 'loading'"
+            (click)="onExtract()"
+          >
+            @if (state() === 'loading') {
+              <span class="spinner"></span> Extracting…
+            } @else {
+              Extract Fields
+            }
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- ── Review Table ── -->
+    @if (state() === 'review' || state() === 'submitting') {
+      <section class="card">
+
+        <div class="card-header">
+          <div>
+            <h1 class="page-title">Extraction Results</h1>
+            <p class="page-desc">
+              <span class="mono">{{ extractionResult()?.applicationId }}</span>
+              &nbsp;·&nbsp;
+              {{ extractionResult()?.documentId }}
+              &nbsp;·&nbsp;
+              @if (mismatchCount() > 0) {
+                <span class="tag-mismatch">{{ mismatchCount() }} mismatch{{ mismatchCount() === 1 ? '' : 'es' }}</span>
+              } @else {
+                <span class="tag-match">All fields match</span>
+              }
+            </p>
+          </div>
+          <button class="btn btn-ghost" (click)="reset()">← New Review</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="review-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Self-Reported</th>
+                <th>AI Extracted</th>
+                <th>Status</th>
+                <th>Decision</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of fieldRows(); track row.field.fieldKey; let i = $index) {
+                <tr [class]="getRowClass(row)">
+
+                  <!-- Field Name -->
+                  <td class="td-field">
+                    <span class="field-name">{{ row.field.fieldName }}</span>
+                    <span class="confidence">{{ (row.field.confidenceScore * 100).toFixed(0) }}% confidence</span>
+                  </td>
+
+                  <!-- Self-Reported -->
+                  <td class="td-value mono">
+                    {{ row.field.selfReportedValue ?? '—' }}
+                  </td>
+
+                  <td class="td-value mono">
+                    @if (row.isEditing) {
+                      <input
+                        class="inline-input"
+                        [(ngModel)]="row.editValue"
+                        (keyup.enter)="saveEdit(i)"
+                        (keyup.escape)="cancelEdit(i)"
+                        autofocus
+                      />
+                    } @else if (row.field.decision === OfficerDecision.EDITED) {
+                      <span class="value-override">{{ row.field.officerOverrideValue }}</span>
+                      <span class="value-struck">{{ row.field.aiExtractedValue }}</span>
+                    } @else {
+                      {{ row.field.aiExtractedValue ?? '—' }}
+                    }
+                  </td>
+
+                  <!-- Status badge -->
+                  <td class="td-status">
+                    <span [class]="'flag-badge flag-' + row.field.flag.toLowerCase()">
+                      {{ row.field.flag }}
+                    </span>
+                  </td>
+
+                  <!-- Decision badge -->
+                  <td class="td-decision">
+                    @if (row.field.decision !== OfficerDecision.PENDING) {
+                      <span [class]="'decision-badge decision-' + row.field.decision.toLowerCase()">
+                        {{ row.field.decision }}
+                      </span>
+                    } @else {
+                      <span class="pending-dash">—</span>
+                    }
+                  </td>
+
+                  <td class="td-actions">
+                    @if (row.isEditing) {
+                      <button class="act-btn act-accept" (click)="saveEdit(i)">Save</button>
+                      <button class="act-btn act-ghost"  (click)="cancelEdit(i)">Cancel</button>
+                    } @else if (row.field.decision === OfficerDecision.PENDING) {
+                      <button class="act-btn act-accept" (click)="acceptField(i)">Accept</button>
+                      @if (row.field.flag === DiscrepancyFlag.MISMATCH) {
+                        <button class="act-btn act-edit" (click)="startEdit(i)">Edit</button>
+                      }
+                      <button class="act-btn act-reject" (click)="rejectField(i)">Reject</button>
+                    } @else {
+                      <button class="act-btn act-ghost" (click)="undoDecision(i)">Undo</button>
+                    }
+                  </td>
+
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (errorMessage) {
+          <div class="error-strip">{{ errorMessage }}</div>
+        }
+
+        <div class="form-footer">
+          @if (!allReviewed()) {
+            <span class="hint-text">Review all fields to continue</span>
+          }
+          <button
+            class="btn btn-primary"
+            [disabled]="!allReviewed() || state() === 'submitting'"
+            (click)="onSubmit()"
+          >
+            @if (state() === 'submitting') {
+              <span class="spinner"></span> Submitting…
+            } @else {
+              Submit to Underwriting
+            }
+          </button>
+        </div>
+
+      </section>
+    }
+
+    <!-- ── Submitted ── -->
+    @if (state() === 'submitted') {
+      <section class="card card-center">
+        <div class="success-mark">◆</div>
+        <h1 class="page-title">Submitted</h1>
+        <p class="page-desc">
+          Application <span class="mono">{{ extractionResult()?.applicationId }}</span>
+          has been forwarded to the Underwriting Service.
+        </p>
+        <div class="result-row">
+          <span class="result-label">Underwriting Status</span>
+          <span class="result-value mono">{{ submissionResult() }}</span>
+        </div>
+        <button class="btn btn-ghost" (click)="reset()">Review Another Application</button>
+      </section>
+    }
+
+  </main>
+
+  <footer class="footer">
+    AI Review Service · POC · <span class="mono">v0.1.0</span>
+  </footer>
+
+</div>
